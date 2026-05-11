@@ -137,15 +137,11 @@ Get the private key file name
 {{- end }}
 
 {{/*
-Get the CA bundle
+Get the CA bundle - only used for external method
 */}}
 {{- define "argo-rollouts-config-mapper.caBundle" -}}
 {{- if eq .Values.certificates.method "external" }}
 {{- .Values.certificates.external.caBundle }}
-{{- else if eq .Values.certificates.method "helm" }}
-{{- $ca := genCA (printf "%s-ca" (include "argo-rollouts-config-mapper.fullname" .)) (.Values.certificates.helm.duration | int) }}
-{{- $cert := genSignedCert (include "argo-rollouts-config-mapper.serviceName" .) nil (list (include "argo-rollouts-config-mapper.serviceName" .) (printf "%s.%s" (include "argo-rollouts-config-mapper.serviceName" .) .Release.Namespace) (printf "%s.%s.svc" (include "argo-rollouts-config-mapper.serviceName" .) .Release.Namespace) (printf "%s.%s.svc.cluster.local" (include "argo-rollouts-config-mapper.serviceName" .) .Release.Namespace)) (.Values.certificates.helm.duration | int) $ca }}
-{{- $ca.Cert | b64enc }}
 {{- else }}
 {{- "" }}
 {{- end }}

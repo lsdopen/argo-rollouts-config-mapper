@@ -69,8 +69,8 @@ certificates:
 
   # Helm-generated certificates (when method is "helm")
   helm:
-    # Certificate validity duration
-    duration: "8760h" # 1 year
+    # Certificate validity duration in days
+    duration: 365
     # Certificate subject
     subject:
       organizationName: "Argo Rollouts Config Mapper Webhook"

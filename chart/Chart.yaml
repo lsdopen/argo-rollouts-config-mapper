@@ -2,7 +2,7 @@ apiVersion: v2
 name: argo-rollouts-config-mapper
 description: A Kubernetes mutating admission webhook that dynamically rewrites ConfigMap and Secret references in Pod specs during ArgoCD Rollouts preview deployments
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "latest"
 keywords:
   - kubernetes

@@ -1,4 +1,5 @@
 {{- include "argo-rollouts-config-mapper.validateValues" . -}}
+{{- if ne .Values.certificates.method "helm" }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -8,6 +9,9 @@ metadata:
   {{- with .Values.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if eq .Values.certificates.method "cert-manager" }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "argo-rollouts-config-mapper.fullname" . }}
   {{- end }}
 webhooks:
   - name: {{ include "argo-rollouts-config-mapper.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
@@ -22,8 +26,6 @@ webhooks:
         path: "/mutate-v1-pod"
       {{- if eq .Values.certificates.method "external" }}
       caBundle: {{ .Values.certificates.external.caBundle }}
-      {{- else if eq .Values.certificates.method "helm" }}
-      caBundle: {{ include "argo-rollouts-config-mapper.caBundle" . }}
       {{- else }}
       caBundle: ""
       {{- end }}
@@ -48,3 +50,4 @@ webhooks:
         {{- with .Values.webhook.namespaceSelector.matchExpressions }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+{{- end }}

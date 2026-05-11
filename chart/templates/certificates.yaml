@@ -3,7 +3,6 @@
 {{- $serviceName := include "argo-rollouts-config-mapper.serviceName" . }}
 {{- $secretName := include "argo-rollouts-config-mapper.certificateSecretName" . }}
 {{- $duration := (.Values.certificates.helm.duration | int) }}
-{{- $subject := .Values.certificates.helm.subject }}
 
 {{- $ca := genCA (printf "%s-ca" (include "argo-rollouts-config-mapper.fullname" .)) $duration }}
 {{- $cert := genSignedCert $serviceName nil (list $serviceName (printf "%s.%s" $serviceName .Release.Namespace) (printf "%s.%s.svc" $serviceName .Release.Namespace) (printf "%s.%s.svc.cluster.local" $serviceName .Release.Namespace)) $duration $ca }}
@@ -24,4 +23,48 @@ data:
   tls.crt: {{ $cert.Cert | b64enc }}
   tls.key: {{ $cert.Key | b64enc }}
   ca.crt: {{ $ca.Cert | b64enc }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "argo-rollouts-config-mapper.fullname" . }}
+  labels:
+    {{- include "argo-rollouts-config-mapper.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+webhooks:
+  - name: {{ include "argo-rollouts-config-mapper.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    clientConfig:
+      service:
+        name: {{ include "argo-rollouts-config-mapper.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate-v1-pod"
+      caBundle: {{ $ca.Cert | b64enc }}
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    objectSelector:
+      matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: NotIn
+          values: [{{ include "argo-rollouts-config-mapper.name" . | quote }}]
+        {{- with .Values.webhook.objectSelector.matchExpressions }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-public"]
+        {{- with .Values.webhook.namespaceSelector.matchExpressions }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 {{- end }}
