@@ -1,0 +1,50 @@
+{{- include "argo-rollouts-config-mapper.validateValues" . -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "argo-rollouts-config-mapper.fullname" . }}
+  labels:
+    {{- include "argo-rollouts-config-mapper.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+webhooks:
+  - name: {{ include "argo-rollouts-config-mapper.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    clientConfig:
+      service:
+        name: {{ include "argo-rollouts-config-mapper.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: "/mutate-v1-pod"
+      {{- if eq .Values.certificates.method "external" }}
+      caBundle: {{ .Values.certificates.external.caBundle }}
+      {{- else if eq .Values.certificates.method "helm" }}
+      caBundle: {{ include "argo-rollouts-config-mapper.caBundle" . }}
+      {{- else }}
+      caBundle: ""
+      {{- end }}
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    objectSelector:
+      matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: NotIn
+          values: [{{ include "argo-rollouts-config-mapper.name" . | quote }}]
+        {{- with .Values.webhook.objectSelector.matchExpressions }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "kube-public"]
+        {{- with .Values.webhook.namespaceSelector.matchExpressions }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}

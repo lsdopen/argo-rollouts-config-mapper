@@ -1,0 +1,19 @@
+Argo Rollouts Config Mapper has been installed.
+
+The webhook is now intercepting Pod CREATE requests and will mutate ConfigMap/Secret
+references for Pods that opt in via annotations.
+
+To opt in a Pod (or Rollout pod template), add these annotations:
+
+  config-mapper.lsdopen.io/mutate: "true"
+  config-mapper.lsdopen.io/secrets: "my-secret-name"
+  config-mapper.lsdopen.io/configmaps: "my-configmap-name"
+
+When the `rollouts-preview-hash` label is present (preview step), references will
+be suffixed with `-preview` (or a custom suffix via `config-mapper.lsdopen.io/suffix`).
+
+To verify the webhook is running:
+  kubectl get pods -l app.kubernetes.io/name={{ include "argo-rollouts-config-mapper.name" . }}
+
+To check the MutatingWebhookConfiguration:
+  kubectl get mutatingwebhookconfiguration {{ include "argo-rollouts-config-mapper.fullname" . }}

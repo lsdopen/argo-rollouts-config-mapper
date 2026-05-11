@@ -1,0 +1,21 @@
+{{- include "argo-rollouts-config-mapper.validateValues" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "argo-rollouts-config-mapper.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "argo-rollouts-config-mapper.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 443
+      targetPort: webhook
+      protocol: TCP
+      name: webhook
+  selector:
+    {{- include "argo-rollouts-config-mapper.selectorLabels" . | nindent 4 }}

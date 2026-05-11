@@ -1,0 +1,127 @@
+# Default values for argo-rollouts-config-mapper.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Image configuration
+image:
+  repository: ghcr.io/lsdopen/argo-rollouts-config-mapper
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets
+imagePullSecrets: []
+  # - name: myregistrykey
+
+# Deployment configuration
+replicaCount: 1
+
+# Service account
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod security context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Container security context
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #     - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Resource limits and requests
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity: {}
+
+# Topology spread constraints
+topologySpreadConstraints: []
+
+# Certificate management configuration
+certificates:
+  # Certificate management method: "helm" (default), "cert-manager", or "external"
+  method: helm
+
+  # Helm-generated certificates (when method is "helm")
+  helm:
+    # Certificate validity duration
+    duration: "8760h" # 1 year
+    # Certificate subject
+    subject:
+      organizationName: "Argo Rollouts Config Mapper Webhook"
+      organizationalUnit:  # Optional: Organizational unit
+      country:             # Optional: Country code
+      province:            # Optional: Province/state
+      locality:            # Optional: City/locality
+
+  # cert-manager configuration (when method is "cert-manager")
+  certManager:
+    # Issuer configuration
+    issuer:
+      name:  # Required when method is "cert-manager": Issuer name
+      kind:  # Required when method is "cert-manager": Issuer kind (Issuer or ClusterIssuer)
+    # Certificate duration (optional, uses issuer default if not specified)
+    duration:      # Optional: Certificate duration (e.g., "2160h" for 90 days)
+    # Certificate renewal before expiry
+    renewBefore:   # Optional: Renew certificate before expiry (e.g., "720h" for 30 days)
+
+  # External certificate configuration (when method is "external")
+  external:
+    # Secret name containing externally managed TLS certificates
+    secretName:  # Required when method is "external": Name of existing secret
+    # Certificate and key file names within the secret
+    certFile:    # Required when method is "external": Certificate file name in secret
+    keyFile:     # Required when method is "external": Private key file name in secret
+    # CA bundle for webhook client config (base64 encoded)
+    caBundle:    # Required when method is "external": CA bundle
+
+# Webhook configuration
+webhook:
+  # Webhook server configuration
+  timeoutSeconds: 5
+  failurePolicy: Fail
+
+  # Object selector to filter which objects the webhook processes (optional)
+  objectSelector: {}
+    # matchExpressions:
+    #   - key: app
+    #     operator: NotIn
+    #     values: ["custom-app"]
+
+  # Namespace selector to filter which namespaces the webhook processes (optional)
+  namespaceSelector: {}
+    # matchExpressions:
+    #   - key: kubernetes.io/metadata.name
+    #     operator: NotIn
+    #     values: ["custom-namespace"]
+
+# Additional labels to add to all resources
+labels: {}
+
+# Additional annotations to add to all resources
+annotations: {}

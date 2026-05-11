@@ -1,0 +1,130 @@
+name: Helm Chart Release
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'chart/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release-chart:
+    name: Release Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Extract chart version
+        id: chart_version
+        run: |
+          CHART_VERSION=$(grep '^version:' chart/Chart.yaml | awk '{print $2}')
+          echo "Using Chart.yaml version: $CHART_VERSION"
+          echo "version=$CHART_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if version was updated for chart changes
+        if: github.event_name == 'push'
+        run: |
+          CHART_VERSION="${{ steps.chart_version.outputs.version }}"
+
+          # Get the previous commit's chart version
+          git show HEAD~1:chart/Chart.yaml > /tmp/previous-chart.yaml 2>/dev/null || echo "version: 0.0.0" > /tmp/previous-chart.yaml
+          PREVIOUS_VERSION=$(grep '^version:' /tmp/previous-chart.yaml | awk '{print $2}' || echo "0.0.0")
+
+          echo "Current version: $CHART_VERSION"
+          echo "Previous version: $PREVIOUS_VERSION"
+
+          # Check if chart files were modified
+          CHART_CHANGES=$(git diff --name-only HEAD~1 HEAD | grep '^chart/' | grep -v 'chart/README.md' || true)
+
+          if [ -n "$CHART_CHANGES" ] && [ "$CHART_VERSION" = "$PREVIOUS_VERSION" ]; then
+            echo "❌ Chart files were modified but version was not updated!"
+            echo "Modified files:"
+            echo "$CHART_CHANGES"
+            echo ""
+            echo "Please update the version in chart/Chart.yaml before pushing chart changes."
+            exit 1
+          elif [ -n "$CHART_CHANGES" ]; then
+            echo "✅ Chart files modified and version updated: $PREVIOUS_VERSION → $CHART_VERSION"
+          else
+            echo "ℹ️ No chart files modified (excluding README)"
+          fi
+
+      - name: Check if chart version already exists
+        id: check_version
+        run: |
+          CHART_VERSION="${{ steps.chart_version.outputs.version }}"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+          # Check if the chart version already exists in the registry
+          if helm pull oci://ghcr.io/$REPO_LOWER/charts/argo-rollouts-config-mapper --version $CHART_VERSION 2>/dev/null; then
+            echo "Chart version $CHART_VERSION already exists in registry"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Chart version $CHART_VERSION does not exist, proceeding with release"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Package Helm chart
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          helm dependency update chart/
+          helm package chart/ --destination .
+
+      - name: Push Helm chart to OCI registry
+        if: steps.check_version.outputs.exists == 'false'
+        run: |
+          CHART_VERSION="${{ steps.chart_version.outputs.version }}"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          helm push argo-rollouts-config-mapper-${CHART_VERSION}.tgz oci://ghcr.io/$REPO_LOWER/charts
+
+      - name: Create GitHub release for chart
+        if: steps.check_version.outputs.exists == 'false' && github.event_name == 'push'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: chart-v${{ steps.chart_version.outputs.version }}
+          release_name: Helm Chart v${{ steps.chart_version.outputs.version }}
+          body: |
+            Helm Chart release v${{ steps.chart_version.outputs.version }}
+
+            ## Installation
+
+            ```bash
+            helm install argo-rollouts-config-mapper oci://ghcr.io/${{ github.repository_owner }}/argo-rollouts-config-mapper/charts/argo-rollouts-config-mapper --version ${{ steps.chart_version.outputs.version }}
+            ```
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        run: |
+          CHART_VERSION="${{ steps.chart_version.outputs.version }}"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          if [ "${{ steps.check_version.outputs.exists }}" == "true" ]; then
+            echo "✅ Chart version $CHART_VERSION already exists in registry"
+          else
+            echo "✅ Successfully released Helm chart v$CHART_VERSION"
+            echo "📦 Chart available at: oci://ghcr.io/$REPO_LOWER/charts/argo-rollouts-config-mapper:$CHART_VERSION"
+          fi

@@ -1,0 +1,27 @@
+{{- include "argo-rollouts-config-mapper.validateValues" . -}}
+{{- if eq .Values.certificates.method "helm" }}
+{{- $serviceName := include "argo-rollouts-config-mapper.serviceName" . }}
+{{- $secretName := include "argo-rollouts-config-mapper.certificateSecretName" . }}
+{{- $duration := (.Values.certificates.helm.duration | int) }}
+{{- $subject := .Values.certificates.helm.subject }}
+
+{{- $ca := genCA (printf "%s-ca" (include "argo-rollouts-config-mapper.fullname" .)) $duration }}
+{{- $cert := genSignedCert $serviceName nil (list $serviceName (printf "%s.%s" $serviceName .Release.Namespace) (printf "%s.%s.svc" $serviceName .Release.Namespace) (printf "%s.%s.svc.cluster.local" $serviceName .Release.Namespace)) $duration $ca }}
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "argo-rollouts-config-mapper.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $cert.Cert | b64enc }}
+  tls.key: {{ $cert.Key | b64enc }}
+  ca.crt: {{ $ca.Cert | b64enc }}
+{{- end }}
