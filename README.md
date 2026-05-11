@@ -13,8 +13,18 @@ This enables preview Pods to consume preview-specific configuration without modi
 1. A Pod is submitted for creation.
 2. The webhook checks for the opt-in annotation `config-mapper.lsdopen.io/mutate: "true"`.
 3. If opted in, it reads the allow-list annotations to determine which ConfigMaps/Secrets to mutate.
-4. If the `rollouts-preview-hash` label is present → appends the suffix.
-5. If the label is absent → strips the suffix (promotion cleanup).
+4. If the label `config-mapper.lsdopen.io/preview: "true"` is present → appends the suffix.
+5. If the label is absent or not `"true"` → strips the suffix (promotion cleanup).
+
+The preview label is injected automatically by ArgoCD Rollouts via `previewMetadata`:
+
+```yaml
+strategy:
+  blueGreen:
+    previewMetadata:
+      labels:
+        config-mapper.lsdopen.io/preview: "true"
+```
 
 ## Annotations
 
@@ -35,7 +45,7 @@ metadata:
     config-mapper.lsdopen.io/mutate: "true"
     config-mapper.lsdopen.io/secrets: "performance-api-file-ext-secret"
   labels:
-    rollouts-preview-hash: "abc123"  # Added by ArgoCD Rollouts during preview
+    config-mapper.lsdopen.io/preview: "true"  # Injected by ArgoCD Rollouts via previewMetadata
 spec:
   containers:
     - name: app

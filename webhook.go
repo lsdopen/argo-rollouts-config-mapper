@@ -27,8 +27,9 @@ const (
 
 // Label constant for the ArgoCD Rollouts preview trigger.
 const (
-	// LabelTrigger is the label added by ArgoCD Rollouts to Pods during a preview step.
-	LabelTrigger = "rollouts-preview-hash"
+	// LabelTrigger is the label injected by ArgoCD Rollouts via previewMetadata
+	// to identify Pods in the preview phase.
+	LabelTrigger = "config-mapper.lsdopen.io/preview"
 )
 
 // DefaultSuffix is the suffix appended to ConfigMap/Secret names when no custom suffix is specified.
@@ -106,7 +107,10 @@ func shouldMutate(pod *corev1.Pod) (bool, bool) {
 	}
 
 	labels := pod.GetLabels()
-	_, isPreview := labels[LabelTrigger]
+	previewVal, isPreview := labels[LabelTrigger]
+	if isPreview {
+		isPreview = previewVal == "true"
+	}
 
 	return true, isPreview
 }

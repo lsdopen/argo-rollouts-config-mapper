@@ -9,8 +9,17 @@ To opt in a Pod (or Rollout pod template), add these annotations:
   config-mapper.lsdopen.io/secrets: "my-secret-name"
   config-mapper.lsdopen.io/configmaps: "my-configmap-name"
 
-When the `rollouts-preview-hash` label is present (preview step), references will
-be suffixed with `-preview` (or a custom suffix via `config-mapper.lsdopen.io/suffix`).
+When the `config-mapper.lsdopen.io/preview: "true"` label is present (injected via
+ArgoCD Rollouts previewMetadata), references will be suffixed with `-preview`
+(or a custom suffix via `config-mapper.lsdopen.io/suffix`).
+
+Configure your Rollout to inject the preview label:
+
+  strategy:
+    blueGreen:
+      previewMetadata:
+        labels:
+          config-mapper.lsdopen.io/preview: "true"
 
 To verify the webhook is running:
   kubectl get pods -l app.kubernetes.io/name={{ include "argo-rollouts-config-mapper.name" . }}

@@ -83,14 +83,14 @@ func TestShouldMutate(t *testing.T) {
 			wantIsPreview: false,
 		},
 		{
-			name: "annotation set to 'true' with trigger label returns shouldProcess=true, isPreview=true",
+			name: "annotation set to 'true' with trigger label set to 'true' returns shouldProcess=true, isPreview=true",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						AnnotationMutate: "true",
 					},
 					Labels: map[string]string{
-						LabelTrigger: "abc123",
+						LabelTrigger: "true",
 					},
 				},
 			},
@@ -98,7 +98,7 @@ func TestShouldMutate(t *testing.T) {
 			wantIsPreview: true,
 		},
 		{
-			name: "annotation set to 'true' with empty trigger label value returns isPreview=true",
+			name: "annotation set to 'true' with empty trigger label value returns isPreview=false",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -110,7 +110,22 @@ func TestShouldMutate(t *testing.T) {
 				},
 			},
 			wantProcess:   true,
-			wantIsPreview: true,
+			wantIsPreview: false,
+		},
+		{
+			name: "annotation set to 'true' with trigger label set to arbitrary value returns isPreview=false",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationMutate: "true",
+					},
+					Labels: map[string]string{
+						LabelTrigger: "abc123",
+					},
+				},
+			},
+			wantProcess:   true,
+			wantIsPreview: false,
 		},
 	}
 
