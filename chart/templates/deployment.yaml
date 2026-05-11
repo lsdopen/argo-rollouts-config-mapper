@@ -50,22 +50,26 @@ spec:
           args:
             - "--cert-dir=/etc/webhook/certs"
             - "--port=8443"
+            - "--health-port=8081"
           ports:
             - name: webhook
               containerPort: 8443
               protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: webhook
-              scheme: HTTPS
+              port: health
+              scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /readyz
-              port: webhook
-              scheme: HTTPS
+              port: health
+              scheme: HTTP
             initialDelaySeconds: 5
             periodSeconds: 5
           {{- with .Values.resources }}

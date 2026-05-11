@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -20,8 +21,10 @@ func main() {
 
 	// Parse flags
 	var port int
+	var healthPort int
 	var certDir string
 	flag.IntVar(&port, "port", 9443, "Webhook server port")
+	flag.IntVar(&healthPort, "health-port", 8081, "Health probe port")
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "Directory containing TLS certificates (tls.crt and tls.key)")
 	flag.Parse()
 
@@ -33,6 +36,7 @@ func main() {
 
 	// Create controller-runtime Manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		HealthProbeBindAddress: fmt.Sprintf(":%d", healthPort),
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:    port,
 			CertDir: certDir,
@@ -62,7 +66,7 @@ func main() {
 	}
 
 	// Start the Manager
-	setupLog.Info("starting manager", "port", port, "cert-dir", certDir)
+	setupLog.Info("starting manager", "port", port, "health-port", healthPort, "cert-dir", certDir)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "manager exited with error")
 		os.Exit(1)
